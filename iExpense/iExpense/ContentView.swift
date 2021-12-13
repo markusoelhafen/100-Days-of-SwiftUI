@@ -30,12 +30,16 @@ struct ContentView: View {
     @StateObject var expenses = Expenses()
     @State private var showingAddExpense = false
     
+    private var itemTypes: [String] {
+        Array(Set(expenses.items.map { $0.type} )).sorted()
+    }
+    
     var body: some View {
         NavigationView {
             List {
-                Section {
-                    ForEach(expenses.items) { item in
-                        if item.type == "Personal" {
+                ForEach(itemTypes, id: \.self) { type in
+                    Section {
+                        ForEach(expenses.items.filter { $0.type == type }) { item in
                             HStack {
                                 VStack(alignment: .leading) {
                                     Text(item.name)
@@ -49,27 +53,10 @@ struct ContentView: View {
                                     .modifier(CurrencyText(amount: item.amount))
                             }
                         }
+                        .onDelete(perform: removeItems)
+                    } header: {
+                        Text("\(type)")
                     }
-                    .onDelete(perform: removeItems)
-                }
-                Section {
-                    ForEach(expenses.items) { item in
-                        if item.type == "Business" {
-                            HStack {
-                                VStack(alignment: .leading) {
-                                    Text(item.name)
-                                        .font(.headline)
-                                    Text(item.type)
-                                }
-                                
-                                Spacer()
-                                
-                                Text(item.amount, format: .currency(code: Locale.current.currencyCode ?? "USD"))
-                                    .modifier(CurrencyText(amount: item.amount))
-                            }
-                        }
-                    }
-                    .onDelete(perform: removeItems)
                 }
             }
             .navigationTitle("iExpense")
