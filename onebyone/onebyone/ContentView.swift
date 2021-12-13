@@ -50,31 +50,6 @@ struct WiggleButton: ViewModifier {
     }
 }
 
-struct BottomSheet<Content: View>: View {
-    var content: () -> Content
-    
-    var body: some View {
-        VStack {
-            Spacer()
-            
-            VStack(spacing: 20) {
-                content()
-            }
-            .padding(20)
-            .padding(.bottom, 60)
-            .background(.white)
-            .cornerRadius(20)
-            .shadow(color: .secondary, radius: 20)
-
-        }
-        .ignoresSafeArea()
-    }
-    
-    init(@ViewBuilder content: @escaping () -> Content) {
-        self.content = content
-    }
-}
-
 struct Grid<Content: View>: View {
     var content: (Int) -> Content
     
@@ -102,14 +77,28 @@ struct Grid<Content: View>: View {
 struct ContentView: View {
     // settings
     @State private var settingsVisible = false
-    @State private var questionAmount = 4
+    @State private var questionAmount = 10
     @State private var timesTable = 5
     
     // game
+    @State private var showSuccess = false
     @State private var questions = [(q: String, a: Int)]()
     @State private var currentQuestion = (q: "", a: 0)
     @State private var currentPossibleAnswers = [Int]()
-    @State private var turns = 0
+    @State private var turns = 0 {
+        didSet {
+            if turns == questionAmount {
+                withAnimation {
+                    showSuccess = true
+                }
+            } else {
+                withAnimation {
+                    showSuccess = false
+                }
+            }
+        }
+    }
+    @State private var errors = 0
     
     
     var body: some View {
@@ -155,30 +144,56 @@ struct ContentView: View {
                 
             }
             
-            if turns == questionAmount {
+            if showSuccess {
+            GeometryReader { geometry in
+                Color.secondary
+                    .ignoresSafeArea()
+                
                 VStack {
-                    Text("You won!")
-                    Button("OK") {startGame()}
+                    VStack {
+                        Text("Yay!").modifier(HugeText()).padding(.bottom, 20)
+                        Text("You got \(turns - errors) out of \(turns) questions correct!").modifier(Headline()).multilineTextAlignment(.center)
+                        Spacer()
+                        Button {
+                            startGame()
+                            
+                        } label: {
+                            Text("Play again!").modifier(RegularText())
+                        }
+                        .modifier(PrimaryCTA())
+                    }
+                    .padding(40)
+                    .frame(
+                        maxWidth: geometry.size.width * 0.9,
+                        maxHeight: geometry.size.height * 0.6,
+                        alignment: .top)
+                    .background(.white)
+                    .cornerRadius(20)
+                    
                 }
+                .frame(width: geometry.size.width, height: geometry.size.height, alignment: .center)
+                .transition(.scale)
+                
+            }
+                
             }
             
 //          Settings goes here
-            if settingsVisible {
-                Color.secondary
-                    .ignoresSafeArea()
-                    
-                BottomSheet {
-                    HStack {
-                        Spacer()
-                        Button {
-                            withAnimation { settingsVisible.toggle() }
-                        } label: {
-                            Image(systemName: "xmark.circle.fill").font(.title).foregroundColor(.secondary)
-                        }
-
+            BottomSheetView(isOpen: $settingsVisible) {
+                HStack {
+                    Spacer()
+                    Button {
+                        withAnimation { settingsVisible.toggle() }
+                    } label: {
+                        Image(systemName: "xmark.circle.fill").font(.title).foregroundColor(.secondary)
                     }
+
+                }
+                
+                VStack {
                     Text("Settings").modifier(Headline())
                     Text("Which table do you want to play?").multilineTextAlignment(.center)
+                        .padding(.bottom, 20)
                     
                     Grid { number in
                         Button {
@@ -189,18 +204,20 @@ struct ContentView: View {
                         }
                         .modifier(WiggleButton(color: timesTable == number ? .red : .blue, size: 65))
                     }
-                    .padding(.bottom, 20)
-                    
-                    Button {
-                        withAnimation { settingsVisible.toggle() }
-                        startGame()
-                    } label: {
-                        Text("Play!".uppercased()).modifier(RegularText())
-                    }
-                    .modifier(PrimaryCTA())
+                    .padding(.bottom, 60)
                 }
-                .transition(.move(edge: .bottom))
+                
+                
+                Button {
+                    withAnimation { settingsVisible.toggle() }
+                    startGame()
+                } label: {
+                    Text("Play!".uppercased()).modifier(RegularText())
+                }
+                .modifier(PrimaryCTA())
+                
             }
+            .edgesIgnoringSafeArea(.all)
             
         }
         .onAppear {
@@ -250,16 +267,18 @@ struct ContentView: View {
     }
     
     func checkAnswer(answer: Int) {
-        if answer == currentQuestion.a {
-            askQuestion()
-            turns += 1
+        if answer != currentQuestion.a {
+            errors += 1
         }
+        askQuestion()
+        turns += 1
     }
     
     func startGame() {
         generateQuestions()
         askQuestion()
         turns = 0
+        errors = 0
     }
 }
 
