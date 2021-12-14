@@ -53,11 +53,23 @@ struct ContentView: View {
                                     .modifier(CurrencyText(amount: item.amount))
                             }
                         }
-                        .onDelete(perform: removeItems)
+                        .onDelete { indexSet in
+                            guard let firstIndex = indexSet.first else { return }
+                            removeItems(for: expenses.items.filter {$0.type == type}[firstIndex].id)
+                        }
                     } header: {
                         Text("\(type)")
                     }
                 }
+//                Button("Add Sample Data") {
+//                    // DEMO DATA
+//                    expenses.items.append(ExpenseItem(name: "Personal 1", type: "Personal", amount: 10.0))
+//                    expenses.items.append(ExpenseItem(name: "Personal 2", type: "Personal", amount: 10.0))
+//                    expenses.items.append(ExpenseItem(name: "Business 1", type: "Business", amount: 10.0))
+//                    expenses.items.append(ExpenseItem(name: "Personal 3", type: "Personal", amount: 10.0))
+//                    expenses.items.append(ExpenseItem(name: "Business 2", type: "Business", amount: 10.0))
+//                    expenses.items.append(ExpenseItem(name: "Business 3", type: "Business", amount: 10.0))
+//                }
             }
             .navigationTitle("iExpense")
             .toolbar {
@@ -73,8 +85,8 @@ struct ContentView: View {
         }
     }
     
-    func removeItems(at offsets: IndexSet) {
-        expenses.items.remove(atOffsets: offsets)
+    func removeItems(for id: UUID) {
+        expenses.items.removeAll(where: {$0.id == id})
     }
 }
 
